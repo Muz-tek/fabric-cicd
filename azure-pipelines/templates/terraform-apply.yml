@@ -1,0 +1,26 @@
+parameters:
+  environmentName: ''
+  serviceConnection: ''
+
+steps:
+  - checkout: self
+
+  - task: TerraformInstaller@1
+    displayName: Install Terraform
+    inputs:
+      terraformVersion: $(terraformVersion)
+
+  - download: current
+    artifact: tfplan-${{ parameters.environmentName }}
+
+  - task: AzureCLI@2
+    displayName: Terraform apply ${{ parameters.environmentName }}
+    inputs:
+      azureSubscription: ${{ parameters.serviceConnection }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      workingDirectory: terraform
+      inlineScript: |
+        set -euo pipefail
+        terraform init
+        terraform apply -auto-approve "$(Pipeline.Workspace)/tfplan-${{ parameters.environmentName }}/tfplan-${{ parameters.environmentName }}"

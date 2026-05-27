@@ -1,0 +1,19 @@
+jobs:
+  - job: fabric_validate
+    displayName: Validate Fabric artifacts
+    steps:
+      - checkout: self
+
+      - task: UsePythonVersion@0
+        displayName: Use Python
+        inputs:
+          versionSpec: '3.11'
+
+      - script: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install pytest nbformat jsonschema yamllint
+          yamllint azure-pipelines
+          pytest tests
+          python scripts/validate_fabric_items.py
+        displayName: Run static checks and tests

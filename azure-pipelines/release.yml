@@ -1,0 +1,80 @@
+trigger:
+  branches:
+    include:
+      - main
+      - release/*
+  paths:
+    include:
+      - fabric/*
+      - notebooks/*
+      - pipelines/*
+      - terraform/*
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group: vg-fabric-dataops
+  - name: terraformVersion
+    value: 1.8.5
+
+stages:
+  - stage: Plan_Test
+    displayName: Plan test environment
+    jobs:
+      - template: templates/terraform-plan.yml
+        parameters:
+          environmentName: test
+          serviceConnection: $(azureServiceConnection)
+
+  - stage: Deploy_Test
+    displayName: Deploy test environment
+    dependsOn: Plan_Test
+    condition: succeeded()
+    jobs:
+      - deployment: deploy_test
+        displayName: Terraform apply and Fabric sync
+        environment: fabric-test
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: templates/terraform-apply.yml
+                  parameters:
+                    environmentName: test
+                    serviceConnection: $(azureServiceConnection)
+                - template: templates/fabric-promote.yml
+                  parameters:
+                    environmentName: test
+                    serviceConnection: $(azureServiceConnection)
+
+  - stage: Plan_Prod
+    displayName: Plan production environment
+    dependsOn: Deploy_Test
+    condition: succeeded()
+    jobs:
+      - template: templates/terraform-plan.yml
+        parameters:
+          environmentName: prod
+          serviceConnection: $(azureServiceConnection)
+
+  - stage: Deploy_Prod
+    displayName: Deploy production environment
+    dependsOn: Plan_Prod
+    condition: succeeded()
+    jobs:
+      - deployment: deploy_prod
+        displayName: Terraform apply and Fabric sync
+        environment: fabric-prod
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: templates/terraform-apply.yml
+                  parameters:
+                    environmentName: prod
+                    serviceConnection: $(azureServiceConnection)
+                - template: templates/fabric-promote.yml
+                  parameters:
+                    environmentName: prod
+                    serviceConnection: $(azureServiceConnection)

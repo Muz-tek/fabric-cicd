@@ -1,0 +1,34 @@
+parameters:
+  environmentName: ''
+  serviceConnection: ''
+
+jobs:
+  - job: terraform_plan_${{ parameters.environmentName }}
+    displayName: Terraform plan ${{ parameters.environmentName }}
+    steps:
+      - checkout: self
+
+      - task: TerraformInstaller@1
+        displayName: Install Terraform
+        inputs:
+          terraformVersion: $(terraformVersion)
+
+      - task: AzureCLI@2
+        displayName: Terraform validate and plan
+        inputs:
+          azureSubscription: ${{ parameters.serviceConnection }}
+          scriptType: bash
+          scriptLocation: inlineScript
+          workingDirectory: terraform
+          inlineScript: |
+            set -euo pipefail
+            terraform init
+            terraform fmt -check -recursive
+            terraform validate
+            terraform plan \
+              -var-file="terraform.tfvars" \
+              -out="$(Pipeline.Workspace)/tfplan-${{ parameters.environmentName }}"
+
+      - publish: $(Pipeline.Workspace)/tfplan-${{ parameters.environmentName }}
+        displayName: Publish Terraform plan
+        artifact: tfplan-${{ parameters.environmentName }}

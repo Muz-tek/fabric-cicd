@@ -1,0 +1,38 @@
+trigger:
+  branches:
+    include:
+      - develop
+      - feature/*
+      - bugfix/*
+  paths:
+    include:
+      - fabric/*
+      - notebooks/*
+      - pipelines/*
+      - tests/*
+      - terraform/*
+      - azure-pipelines/*
+
+pr:
+  branches:
+    include:
+      - develop
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group: vg-fabric-dataops
+  - name: terraformVersion
+    value: 1.8.5
+
+stages:
+  - stage: Validate
+    displayName: Validate code and IaC
+    jobs:
+      - template: templates/fabric-validate.yml
+      - template: templates/terraform-plan.yml
+        parameters:
+          environmentName: dev
+          serviceConnection: $(azureServiceConnection)

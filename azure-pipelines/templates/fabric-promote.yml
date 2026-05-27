@@ -1,0 +1,28 @@
+parameters:
+  environmentName: ''
+  serviceConnection: ''
+
+steps:
+  - checkout: self
+
+  - task: UsePythonVersion@0
+    displayName: Use Python
+    inputs:
+      versionSpec: '3.11'
+
+  - task: AzureCLI@2
+    displayName: Sync Fabric workspace from Git
+    inputs:
+      azureSubscription: ${{ parameters.serviceConnection }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -euo pipefail
+        python -m pip install --upgrade pip
+        pip install requests
+        python scripts/sync_fabric_from_git.py --environment "${{ parameters.environmentName }}"
+
+  - publish: $(System.DefaultWorkingDirectory)/release-evidence
+    displayName: Publish release evidence
+    artifact: release-evidence-${{ parameters.environmentName }}
+    condition: always()
