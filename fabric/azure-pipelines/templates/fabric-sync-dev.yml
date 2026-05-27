@@ -23,6 +23,7 @@ jobs:
             python -m pip install --upgrade pip
             pip install requests
             python scripts/sync_fabric_from_git.py --environment dev
+            python scripts/publish_fabric_environments.py --environment dev
 
       - publish: $(System.DefaultWorkingDirectory)/release-evidence
         displayName: Publish Dev sync evidence

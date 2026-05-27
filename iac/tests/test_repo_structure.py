@@ -21,9 +21,12 @@ def test_required_pipeline_scripts_exist():
         "azure-pipelines/iac-platform.yml",
         "azure-pipelines/templates/terraform-plan.yml",
         "azure-pipelines/templates/terraform-apply.yml",
+        "SETUP.md",
+        ".gitignore",
         "terraform/main.tf",
         "terraform/variables.tf",
         "terraform/outputs.tf",
+        "terraform/backend.tf.example",
     ]
 
     for file_path in required:

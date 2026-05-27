@@ -13,7 +13,7 @@ jobs:
           set -euo pipefail
           python -m pip install --upgrade pip
           pip install pytest nbformat jsonschema yamllint
-          yamllint azure-pipelines
+          yamllint azure-pipelines deployment-rules environments
           if find tests -name 'test_*.py' | grep -q .; then
             pytest tests
           fi

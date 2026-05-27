@@ -24,3 +24,5 @@ steps:
         set -euo pipefail
         terraform init
         terraform apply -auto-approve "$(Pipeline.Workspace)/tfplan-${{ parameters.planName }}/tfplan-${{ parameters.planName }}"
+    env:
+      AZDO_PERSONAL_ACCESS_TOKEN: $(System.AccessToken)

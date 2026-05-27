@@ -26,6 +26,7 @@ steps:
           --source "${{ parameters.sourceStage }}" \
           --target "${{ parameters.targetStage }}" \
           --policy "${{ parameters.policy }}"
+        python scripts/publish_fabric_environments.py --environment "${{ parameters.targetStage }}"
 
   - publish: $(System.DefaultWorkingDirectory)/release-evidence
     displayName: Publish release evidence

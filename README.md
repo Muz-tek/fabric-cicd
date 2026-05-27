@@ -13,3 +13,8 @@ The pipelines are deliberately separate:
 - Fabric workload changes validate Fabric assets, sync Dev from Git, then promote Dev to Test to Prod through Fabric deployment pipelines.
 
 Start with [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md).
+
+When implementing, copy the contents of each folder into its matching Azure DevOps repo:
+
+- `iac/` -> platform/IaC repo. Follow [iac/SETUP.md](iac/SETUP.md).
+- `fabric/` -> Fabric workload repo. Follow [fabric/SETUP.md](fabric/SETUP.md).

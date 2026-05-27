@@ -28,6 +28,8 @@ jobs:
             terraform plan \
               -var-file="terraform.tfvars" \
               -out="$(Pipeline.Workspace)/tfplan-${{ parameters.planName }}"
+        env:
+          AZDO_PERSONAL_ACCESS_TOKEN: $(System.AccessToken)
 
       - publish: $(Pipeline.Workspace)/tfplan-${{ parameters.planName }}
         displayName: Publish Terraform plan

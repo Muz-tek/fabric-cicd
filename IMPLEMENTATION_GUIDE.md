@@ -92,6 +92,11 @@ README.md
 
 Copy the contents of `iac/` to the platform/IaC Azure Repos repository and the contents of `fabric/` to the Fabric workload Azure Repos repository.
 
+Each repo template has its own setup guide:
+
+- `iac/SETUP.md`
+- `fabric/SETUP.md`
+
 ## Prerequisites
 
 1. Microsoft Fabric tenant and capacity.
@@ -102,10 +107,13 @@ Copy the contents of `iac/` to the platform/IaC Azure Repos repository and the c
 4. Fabric configured connection for Azure DevOps Git integration.
 5. Service principal or user identity with permission to manage Fabric workspaces, Azure resources, and Azure DevOps pipeline definitions.
 6. Terraform 1.7 or later.
+7. Terraform task support in Azure Pipelines, or a replacement install step if your organization does not use `TerraformInstaller@1`.
 
 Microsoft recommends explicitly authorizing service connections to pipelines instead of granting broad access to all pipelines.
 
 For local Terraform runs, authenticate the Azure DevOps provider with `AZDO_ORG_SERVICE_URL` and `AZDO_PERSONAL_ACCESS_TOKEN`, or export only `AZDO_PERSONAL_ACCESS_TOKEN` when `azuredevops_org_service_url` is supplied through `terraform.tfvars`. For Azure resources and Fabric, sign in with an identity that has the required Azure RBAC and Fabric tenant/workspace permissions.
+
+For Azure Pipeline Terraform runs, the IaC pipeline passes `$(System.AccessToken)` to the Azure DevOps provider as `AZDO_PERSONAL_ACCESS_TOKEN`. Grant the build service identity permission to manage pipeline definitions and variable groups, or replace it with a secure PAT variable if your organization requires that pattern.
 
 ## Branching and Promotion Model
 
@@ -154,6 +162,8 @@ terraform apply -var-file terraform.tfvars
 
 For team use, configure a remote backend before the first shared apply. Use Azure Storage with blob versioning and restricted RBAC.
 
+Use `terraform/backend.tf.example` as the starting point for remote state. Rename it to `backend.tf` only after creating the backend storage account and container.
+
 When running from this reference repo before splitting the folders into separate Azure Repos repositories, use `cd iac/terraform` instead.
 
 ## Configure Azure Pipelines
@@ -173,6 +183,8 @@ After creation:
 
 For the first bootstrap, either run Terraform locally or create a temporary variable group containing `azureServiceConnection`. After Terraform applies successfully, it manages the shared variable group and pipeline definitions.
 
+The first run also needs Azure DevOps permissions to create/update pipeline definitions and variable groups. If the pipeline uses `$(System.AccessToken)`, enable OAuth token access and grant the build service account the required Azure DevOps permissions.
+
 ## CI/CD Behavior
 
 `iac-platform` pipeline:
@@ -188,6 +200,7 @@ For the first bootstrap, either run Terraform locally or create a temporary vari
 - Runs only on Fabric workload repo changes.
 - Validates Fabric JSON artifacts, notebooks, YAML, and workload tests.
 - Syncs only the Dev Fabric workspace from Git.
+- Publishes staged Fabric Spark Environments after Dev sync and after each deployment stage.
 - Deploys Dev to Test through the Fabric deployment pipeline API using the `overwrite-test` policy.
 - Deploys Test to Prod through the Fabric deployment pipeline API after Azure DevOps approval using the `incremental-prod` policy.
 - Publishes release evidence for auditability.
@@ -201,6 +214,8 @@ For the first bootstrap, either run Terraform locally or create a temporary vari
 
 - Dev to Test with `overwrite-test`
 - Test to Prod with `incremental-prod`
+
+`scripts/publish_fabric_environments.py` publishes staged Spark Environment changes after Dev sync and after each deployment target receives content. This keeps notebook runtime/library changes aligned with the deployed Fabric item definitions.
 
 The Fabric deployment API deploys all supported source-stage items when no item list is specified. Existing paired target items are updated, and new supported source items are created in the target. This automation does not delete target-only items.
 
@@ -244,6 +259,7 @@ Spark Environments need special handling:
 
 - Git tracks supported Environment library and Spark compute settings.
 - Git sync updates the Environment staging state. Publish the Environment before relying on it for live notebook execution.
+- The Fabric workload pipeline runs the Environment publish step automatically after Dev sync and after Test/Prod deployment.
 - Fabric deployment pipelines can promote Environment items, but the feature is currently preview.
 - Custom pools are not fully supported in deployment pipelines. If a custom pool is selected, target Environment compute settings can fall back to defaults and continue showing differences after deployment.
 - Pin library versions where possible and keep custom library files in source control.
