@@ -2,11 +2,14 @@
 
 Microsoft Fabric CI/CD platform scaffold for Azure DevOps.
 
-The implementation target is:
+This repo is organized as two Azure DevOps repo templates:
 
-- A Fabric workload Azure Repos repository for notebooks, data pipelines, semantic models, reports, and item definitions.
-- A platform/IaC Azure Repos repository for Terraform, Azure Pipelines YAML, scripts, documentation, and runbooks.
-- Azure Pipelines for CI, release, approvals, and Dev to Test to Prod promotion.
-- Terraform for Fabric workspace setup, Dev workspace Git integration, Fabric deployment pipeline setup, Azure operational resources, and Azure DevOps pipeline definitions.
+- `iac/`: platform/IaC repo template with Terraform and the `iac-platform` Azure Pipeline.
+- `fabric/`: Fabric workload repo template with notebooks/pipelines/items folders and the `fabric-cicd` Azure Pipeline.
+
+The pipelines are deliberately separate:
+
+- IaC changes plan/apply platform resources only.
+- Fabric workload changes validate Fabric assets, sync Dev from Git, then promote Dev to Test to Prod through Fabric deployment pipelines.
 
 Start with [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md).

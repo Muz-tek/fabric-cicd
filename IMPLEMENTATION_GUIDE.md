@@ -4,28 +4,37 @@
 
 This repository contains a starter implementation for modern DataOps/DevOps around Microsoft Fabric, designed to run exclusively in Azure DevOps.
 
-The recommended operating model uses two Azure Repos repositories:
+The recommended operating model uses two independent Azure Repos repositories:
 
 - Fabric workload repo: notebooks, data pipelines, semantic models, reports, and Fabric item definitions.
 - Platform/IaC repo: Terraform, Azure Pipelines YAML, automation scripts, documentation, and runbooks.
 
+The top-level folders in this reference repo map directly to those repositories:
+
+- `iac/` becomes the platform/IaC repo.
+- `fabric/` becomes the Fabric workload repo.
+
 This scaffold provides:
 
-- Terraform-managed Fabric workspaces, Dev workspace Git integration, Fabric deployment pipeline stages, workspace roles, baseline Lakehouses, and Azure operational resources.
-- Azure Pipelines for CI validation, Terraform planning/apply, environment promotion, release evidence, and approvals.
+- Terraform-managed Fabric workspaces, Dev workspace Git integration, Fabric deployment pipeline stages, workspace roles, baseline Lakehouses, Azure DevOps pipeline definitions, and Azure operational resources.
+- One Azure Pipeline for platform/IaC changes.
+- One Azure Pipeline for Fabric workload validation and Dev to Test to Prod promotion.
 - Static validation for Fabric JSON artifacts and notebooks.
 - Operational runbooks for failed validation, failed promotion, production incidents, and access requests.
 
-The design follows Microsoft Fabric ALM guidance: use the Fabric workload repo as the source of truth for Fabric items, connect Git only to the Dev workspace, and let Azure Pipelines in the platform/IaC repo control promotion from Dev to Test to Prod through Fabric deployment pipelines. This scaffold is intentionally Azure DevOps-only.
+The design follows Microsoft Fabric ALM guidance: use the Fabric workload repo as the source of truth for Fabric items, connect Git only to the Dev workspace, and let the Fabric workload Azure Pipeline control promotion from Dev to Test to Prod through Fabric deployment pipelines. This scaffold is intentionally Azure DevOps-only.
 
 ## Target Architecture
 
 ```mermaid
 flowchart LR
+  IaC["IaC repo main"] --> Platform["iac-platform pipeline"]
+  Platform --> Infra["Fabric workspaces, deployment pipeline, roles"]
   Dev["Fabric workload feature branch"] --> PR["Pull request"]
-  PR --> CI["CI pipeline: lint, tests, Terraform plan"]
+  PR --> CI["fabric-cicd validation"]
   CI --> Main["Fabric workload main branch"]
   Main --> DevWS["Fabric Dev workspace connected to Git"]
+  Infra --> DevWS
   DevWS --> TestWS["Fabric Test workspace"]
   TestWS --> Approval["Azure DevOps approval"]
   Approval --> ProdWS["Fabric Prod workspace"]
@@ -34,12 +43,18 @@ flowchart LR
 
 ## Repository Layout
 
-Platform/IaC repo:
+Reference repo:
+
+```text
+iac/
+fabric/
+```
+
+Platform/IaC repo template (`iac/`):
 
 ```text
 azure-pipelines/
-  ci.yml
-  release.yml
+  iac-platform.yml
   templates/
 terraform/
   versions.tf
@@ -48,23 +63,30 @@ terraform/
   outputs.tf
   terraform.tfvars.example
 scripts/
-  validate_fabric_items.py
-  sync_fabric_from_git.py
-  deploy_fabric_stage.py
+  .gitkeep
 tests/
 runbooks/
-IMPLEMENTATION_GUIDE.md
+README.md
 ```
 
-Fabric workload repo:
+Fabric workload repo template (`fabric/`):
 
 ```text
-fabric/
+azure-pipelines/
+  fabric-cicd.yml
+  templates/
+deployment-rules/
+items/
 notebooks/
 pipelines/
+reports/
+scripts/
+semantic-models/
+tests/
+README.md
 ```
 
-The workload repo name defaults to `fabric-workloads` in the YAML repository resources. If you use another name, update `azure-pipelines/ci.yml` and `azure-pipelines/release.yml`.
+Copy the contents of `iac/` to the platform/IaC Azure Repos repository and the contents of `fabric/` to the Fabric workload Azure Repos repository.
 
 ## Prerequisites
 
@@ -102,7 +124,7 @@ Protect `main` in both repositories with branch policies:
 
 ## Configure Terraform
 
-1. Copy `terraform/terraform.tfvars.example` to `terraform/terraform.tfvars`.
+1. In the platform/IaC repo, copy `terraform/terraform.tfvars.example` to `terraform/terraform.tfvars`.
 2. Fill in:
    - `fabric_capacity_id`
    - `fabric_git_connection_id`
@@ -127,12 +149,14 @@ terraform apply -var-file terraform.tfvars
 
 For team use, configure a remote backend before the first shared apply. Use Azure Storage with blob versioning and restricted RBAC.
 
+When running from this reference repo before splitting the folders into separate Azure Repos repositories, use `cd iac/terraform` instead.
+
 ## Configure Azure Pipelines
 
-Terraform creates two pipeline definitions:
+Terraform creates two Azure Pipeline definitions:
 
-- `<project>-fabric-ci`
-- `<project>-fabric-release`
+- `<project>-iac-platform`, sourced from the platform/IaC repo.
+- `<project>-fabric-cicd`, sourced from the Fabric workload repo.
 
 After creation:
 
@@ -141,29 +165,28 @@ After creation:
 3. Create Azure DevOps Environments named `fabric-platform`, `fabric-test`, and `fabric-prod`.
 4. Add approval checks to `fabric-prod`. Add checks to `fabric-test` as needed for UAT control.
 5. Confirm the `vg-fabric-dataops` variable group is authorized for each pipeline.
-6. If your Fabric workload repository is not named `fabric-workloads`, update the `resources.repositories.name` value in `azure-pipelines/ci.yml` and `azure-pipelines/release.yml`.
+
+For the first bootstrap, either run Terraform locally or create a temporary variable group containing `azureServiceConnection`. After Terraform applies successfully, it manages the shared variable group and pipeline definitions.
 
 ## CI/CD Behavior
 
-CI pipeline:
+`iac-platform` pipeline:
 
-- Runs on platform/IaC repo changes.
-- Also watches the Fabric workload repo for changes to `main`, `develop`, `feature/*`, and `bugfix/*`.
+- Runs only on platform/IaC repo changes.
 - Checks Terraform formatting and validation.
 - Produces a Terraform plan.
-- Runs JSON and notebook validation against the Fabric workload repo.
-- Runs YAML and pytest validation against the platform/IaC repo.
+- Applies platform changes from `main` only.
+- Creates or updates Fabric workspaces, deployment pipeline stages, role assignments, variable groups, and Azure DevOps pipeline definitions.
 
-Release pipeline:
+`fabric-cicd` pipeline:
 
-- Runs on platform/IaC repo `main` changes.
-- Also runs when the Fabric workload repo `main` changes.
-- Plans and applies platform infrastructure.
+- Runs only on Fabric workload repo changes.
+- Validates Fabric JSON artifacts, notebooks, YAML, and workload tests.
 - Syncs only the Dev Fabric workspace from Git.
 - Deploys Dev to Test through the Fabric deployment pipeline API.
 - Deploys Test to Prod through the Fabric deployment pipeline API after Azure DevOps approval.
 - Publishes release evidence for auditability.
-- Uses Azure DevOps environment approvals for production.
+- Does not run Terraform and does not alter platform/IaC resources.
 
 ## Fabric Deployment Automation
 
@@ -186,6 +209,38 @@ Terraform adds these values to the Azure DevOps variable group:
 
 The pipeline gets the Fabric access token through the Azure CLI service connection context. The service connection identity must be a deployment pipeline admin and at least a contributor on source and target workspaces. Service principal deployment is supported only when the involved Fabric item types support service principals.
 
+## Fabric-Specific Release Considerations
+
+Fabric item support differs by item type. Do not assume every workspace item can be deployed the same way. Before enabling a workload in production, confirm whether the item type supports Git integration, deployment pipelines, service principals, deployment rules, and REST automation.
+
+Use these folders in the Fabric workload repo:
+
+- `notebooks/`: notebooks and reusable notebook logic. Prefer parameters for environment-specific values.
+- `pipelines/`: Fabric data pipelines. External connections and item references should be parameterized where possible.
+- `items/`: generic Fabric item definitions exported from Git integration or REST APIs.
+- `semantic-models/`: semantic model project files and model deployment assets.
+- `reports/`: report project files.
+- `deployment-rules/`: documented Dev/Test/Prod overrides such as lakehouse bindings, data source rules, notebook parameters, semantic model parameters, connection references, and refresh behavior.
+
+For Lakehouses, Microsoft documents that data is preserved during Git operations and that deployment pipelines can be used for environment segmentation. Treat Lakehouse data separately from Lakehouse definitions. Do not rely on Git or deployment pipelines to move production data.
+
+For notebooks and data pipelines, validate these before release:
+
+- References to Lakehouses, Warehouses, and other workspace items.
+- Parameter values for Test and Prod.
+- Connection identities and gateways.
+- Schedules and trigger state.
+- Whether activity references use logical IDs that can be rebound by Fabric deployment pipelines.
+
+For semantic models and reports, validate these before release:
+
+- Data source and parameter deployment rules.
+- Model format compatibility.
+- Report-to-model bindings.
+- Refresh credentials and refresh schedules.
+
+If an item type is not supported by Fabric deployment pipelines or has incomplete rule support for your scenario, keep the item in source control but deploy it with a workload-specific script or a manual runbook until the Fabric APIs support the required behavior.
+
 ## Testing Strategy
 
 Recommended test layers:
@@ -207,6 +262,7 @@ Each release should capture:
 - Approval record.
 - Dev sync evidence.
 - Fabric deployment evidence.
+- Environment-specific deployment-rule review.
 - Smoke test results.
 - Rollback decision and owner.
 

@@ -35,7 +35,7 @@ output "azuredevops_variable_group_name" {
 output "pipeline_names" {
   description = "Created Azure Pipeline definitions."
   value = {
-    ci      = azuredevops_build_definition.ci.name
-    release = azuredevops_build_definition.release.name
+    iac_platform = azuredevops_build_definition.ci.name
+    fabric_cicd  = azuredevops_build_definition.fabric.name
   }
 }

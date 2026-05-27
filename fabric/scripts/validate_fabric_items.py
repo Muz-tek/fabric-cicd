@@ -5,7 +5,14 @@ import sys
 
 
 ROOT = Path(os.getenv("FABRIC_SOURCE_ROOT", Path(__file__).resolve().parents[1])).resolve()
-FABRIC_DIRS = [ROOT / "fabric", ROOT / "notebooks", ROOT / "pipelines"]
+FABRIC_DIRS = [
+    ROOT / "deployment-rules",
+    ROOT / "items",
+    ROOT / "notebooks",
+    ROOT / "pipelines",
+    ROOT / "reports",
+    ROOT / "semantic-models",
+]
 
 
 def validate_json_files() -> list[str]:

@@ -274,26 +274,26 @@ resource "azuredevops_variable_group" "platform" {
 
 resource "azuredevops_build_definition" "ci" {
   project_id = data.azuredevops_project.this.id
-  name       = "${var.project_name}-fabric-ci"
+  name       = "${var.project_name}-iac-platform"
   path       = "\\Fabric DataOps"
 
   repository {
     repo_type   = "TfsGit"
     repo_id     = data.azuredevops_git_repository.iac.id
     branch_name = "refs/heads/main"
-    yml_path    = "azure-pipelines/ci.yml"
+    yml_path    = "azure-pipelines/iac-platform.yml"
   }
 }
 
-resource "azuredevops_build_definition" "release" {
+resource "azuredevops_build_definition" "fabric" {
   project_id = data.azuredevops_project.this.id
-  name       = "${var.project_name}-fabric-release"
+  name       = "${var.project_name}-fabric-cicd"
   path       = "\\Fabric DataOps"
 
   repository {
     repo_type   = "TfsGit"
-    repo_id     = data.azuredevops_git_repository.iac.id
+    repo_id     = data.azuredevops_git_repository.fabric.id
     branch_name = "refs/heads/main"
-    yml_path    = "azure-pipelines/release.yml"
+    yml_path    = "azure-pipelines/fabric-cicd.yml"
   }
 }

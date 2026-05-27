@@ -2,60 +2,43 @@ trigger:
   branches:
     include:
       - main
+      - develop
+      - feature/*
+      - bugfix/*
   paths:
     include:
-      - terraform/*
-      - azure-pipelines/*
-      - scripts/*
+      - azure-pipelines/**
+      - scripts/**
+      - tests/**
+      - notebooks/**
+      - pipelines/**
+      - items/**
+      - semantic-models/**
+      - reports/**
+      - deployment-rules/**
 
-resources:
-  repositories:
-    - repository: fabric_source
-      type: git
-      name: fabric-workloads
-      trigger:
-        branches:
-          include:
-            - main
+pr:
+  branches:
+    include:
+      - main
+      - develop
 
 pool:
   vmImage: ubuntu-latest
 
 variables:
   - group: vg-fabric-dataops
-  - name: terraformVersion
-    value: 1.8.5
 
 stages:
-  - stage: Plan_Platform
-    displayName: Plan Fabric platform
+  - stage: Validate
+    displayName: Validate Fabric workload
     jobs:
-      - template: templates/terraform-plan.yml
-        parameters:
-          planName: platform
-          serviceConnection: $(azureServiceConnection)
-
-  - stage: Apply_Platform
-    displayName: Apply Fabric platform
-    dependsOn: Plan_Platform
-    condition: succeeded()
-    jobs:
-      - deployment: apply_platform
-        displayName: Terraform apply workspaces and deployment pipeline
-        environment: fabric-platform
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - template: templates/terraform-apply.yml
-                  parameters:
-                    planName: platform
-                    serviceConnection: $(azureServiceConnection)
+      - template: templates/fabric-validate.yml
 
   - stage: Sync_Dev
     displayName: Sync Dev workspace from Git
-    dependsOn: Apply_Platform
-    condition: succeeded()
+    dependsOn: Validate
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
     jobs:
       - template: templates/fabric-sync-dev.yml
         parameters:

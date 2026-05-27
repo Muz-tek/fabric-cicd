@@ -1,0 +1,15 @@
+{
+  "description": "Document environment-specific Fabric deployment rules here. Apply these in the Fabric deployment pipeline UI or automate them once the required REST/API support is available for your item types.",
+  "test": {
+    "lakehouseBindings": [],
+    "notebookParameters": [],
+    "dataSourceRules": [],
+    "semanticModelParameters": []
+  },
+  "prod": {
+    "lakehouseBindings": [],
+    "notebookParameters": [],
+    "dataSourceRules": [],
+    "semanticModelParameters": []
+  }
+}

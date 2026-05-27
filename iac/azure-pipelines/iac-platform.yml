@@ -1,0 +1,51 @@
+trigger:
+  branches:
+    include:
+      - main
+      - feature/*
+      - bugfix/*
+  paths:
+    include:
+      - tests/**
+      - terraform/**
+      - azure-pipelines/**
+      - scripts/**
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group: vg-fabric-dataops
+  - name: terraformVersion
+    value: 1.8.5
+
+stages:
+  - stage: Plan
+    displayName: Plan platform IaC
+    jobs:
+      - template: templates/terraform-plan.yml
+        parameters:
+          planName: platform
+          serviceConnection: $(azureServiceConnection)
+
+  - stage: Apply
+    displayName: Apply platform IaC
+    dependsOn: Plan
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: apply_platform
+        displayName: Apply Fabric platform IaC
+        environment: fabric-platform
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: templates/terraform-apply.yml
+                  parameters:
+                    planName: platform
+                    serviceConnection: $(azureServiceConnection)

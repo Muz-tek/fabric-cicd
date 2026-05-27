@@ -18,9 +18,12 @@ def test_required_dataops_folders_exist():
 
 def test_required_pipeline_scripts_exist():
     required = [
-        "scripts/validate_fabric_items.py",
-        "scripts/sync_fabric_from_git.py",
-        "scripts/deploy_fabric_stage.py",
+        "azure-pipelines/iac-platform.yml",
+        "azure-pipelines/templates/terraform-plan.yml",
+        "azure-pipelines/templates/terraform-apply.yml",
+        "terraform/main.tf",
+        "terraform/variables.tf",
+        "terraform/outputs.tf",
     ]
 
     for file_path in required:

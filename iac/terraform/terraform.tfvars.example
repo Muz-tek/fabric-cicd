@@ -11,3 +11,4 @@ workspace_admin_principal_ids   = ["00000000-0000-0000-0000-000000000000"]
 workspace_contributor_principal_ids = ["00000000-0000-0000-0000-000000000000"]
 deployment_pipeline_admin_principal_ids = ["00000000-0000-0000-0000-000000000000"]
 dev_git_branch = "main"
+git_directory  = "/"

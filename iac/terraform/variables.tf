@@ -58,7 +58,7 @@ variable "azure_service_connection_name" {
 variable "git_directory" {
   description = "Repository folder synced to the Fabric dev workspace."
   type        = string
-  default     = "/fabric"
+  default     = "/"
 
   validation {
     condition     = startswith(var.git_directory, "/")
