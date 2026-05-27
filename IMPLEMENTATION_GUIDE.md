@@ -111,8 +111,8 @@ Use this default flow:
 - Fabric workload repo `main`: approved integration branch and source of truth for Fabric content.
 - Platform/IaC repo `main`: source of truth for Terraform, release orchestration, and runbooks.
 - Fabric Dev workspace: connected to `main` through Fabric Git integration.
-- Fabric Test workspace: not connected to Git; promoted from Dev by Azure Pipelines.
-- Fabric Prod workspace: not connected to Git; promoted from Test by Azure Pipelines after approval.
+- Fabric Test workspace: not connected to Git; promoted from Dev by Azure Pipelines using an overwrite validation policy.
+- Fabric Prod workspace: not connected to Git; promoted from Test by Azure Pipelines using an incremental update policy after approval.
 
 Protect `main` in both repositories with branch policies:
 
@@ -183,8 +183,8 @@ For the first bootstrap, either run Terraform locally or create a temporary vari
 - Runs only on Fabric workload repo changes.
 - Validates Fabric JSON artifacts, notebooks, YAML, and workload tests.
 - Syncs only the Dev Fabric workspace from Git.
-- Deploys Dev to Test through the Fabric deployment pipeline API.
-- Deploys Test to Prod through the Fabric deployment pipeline API after Azure DevOps approval.
+- Deploys Dev to Test through the Fabric deployment pipeline API using the `overwrite-test` policy.
+- Deploys Test to Prod through the Fabric deployment pipeline API after Azure DevOps approval using the `incremental-prod` policy.
 - Publishes release evidence for auditability.
 - Does not run Terraform and does not alter platform/IaC resources.
 
@@ -194,8 +194,16 @@ For the first bootstrap, either run Terraform locally or create a temporary vari
 
 `scripts/deploy_fabric_stage.py` calls the Fabric deployment pipeline `deploy` API for consecutive stage deployments:
 
-- Dev to Test
-- Test to Prod
+- Dev to Test with `overwrite-test`
+- Test to Prod with `incremental-prod`
+
+The Fabric deployment API deploys all supported source-stage items when no item list is specified. Existing paired target items are updated, and new supported source items are created in the target. This automation does not delete target-only items.
+
+Environment policy:
+
+- Dev: align with the Fabric workload repo `main` branch through Git sync.
+- Test: overwrite/update from Dev and create new items from Dev. Test is a validation target and should not contain manually maintained content.
+- Prod: incremental update from Test. Existing paired Prod items are updated, new approved items are created, and target-only Prod items remain until manually deleted through a separate approved retirement/change process.
 
 Terraform adds these values to the Azure DevOps variable group:
 
@@ -262,6 +270,7 @@ Each release should capture:
 - Approval record.
 - Dev sync evidence.
 - Fabric deployment evidence.
+- Prod manual deletion/retirement evidence when applicable.
 - Environment-specific deployment-rule review.
 - Smoke test results.
 - Rollback decision and owner.
@@ -275,6 +284,7 @@ Use semantic release labels for data products where useful, for example `sales-m
 - Store secrets in Key Vault, not pipeline YAML.
 - Use workload identity federation where available.
 - Keep only the Dev workspace Git-connected unless you deliberately choose a branch-per-environment model.
+- Do not delete Prod items automatically as part of deployment. Retire Prod items manually with explicit approval and evidence.
 - Require manual approval for production.
 - Keep release evidence for audit and incident response.
 

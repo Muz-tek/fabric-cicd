@@ -60,6 +60,7 @@ stages:
                   parameters:
                     sourceStage: dev
                     targetStage: test
+                    policy: overwrite-test
                     serviceConnection: $(azureServiceConnection)
 
   - stage: Deploy_Prod
@@ -78,4 +79,5 @@ stages:
                   parameters:
                     sourceStage: test
                     targetStage: prod
+                    policy: incremental-prod
                     serviceConnection: $(azureServiceConnection)

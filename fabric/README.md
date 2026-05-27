@@ -12,3 +12,9 @@ It owns:
 - The `fabric-cicd` Azure Pipeline.
 
 Only the Dev Fabric workspace is connected to this repo. Test and Prod are promoted through the Fabric deployment pipeline controlled by Azure DevOps.
+
+Deployment policy:
+
+- Dev always syncs from `main`.
+- Test is overwritten/updated from Dev for validation.
+- Prod is incremental: existing paired items are updated, new approved items are created, and retired Prod-only items are manually deleted through a separate approved change.

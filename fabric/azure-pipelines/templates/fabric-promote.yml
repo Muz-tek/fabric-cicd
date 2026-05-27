@@ -1,6 +1,7 @@
 parameters:
   sourceStage: ''
   targetStage: ''
+  policy: ''
   serviceConnection: ''
 
 steps:
@@ -23,7 +24,8 @@ steps:
         pip install requests
         python scripts/deploy_fabric_stage.py \
           --source "${{ parameters.sourceStage }}" \
-          --target "${{ parameters.targetStage }}"
+          --target "${{ parameters.targetStage }}" \
+          --policy "${{ parameters.policy }}"
 
   - publish: $(System.DefaultWorkingDirectory)/release-evidence
     displayName: Publish release evidence

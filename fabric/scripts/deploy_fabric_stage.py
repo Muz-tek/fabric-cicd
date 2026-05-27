@@ -71,7 +71,7 @@ def stage_id(stage_name: str) -> str:
     return value
 
 
-def deploy_stage(source: str, target: str, note: str) -> dict:
+def deploy_stage(source: str, target: str, note: str, policy: str) -> dict:
     deployment_pipeline_id = os.getenv("FABRIC_DEPLOYMENT_PIPELINE_ID")
     if not deployment_pipeline_id:
         raise RuntimeError("Missing required environment variable: FABRIC_DEPLOYMENT_PIPELINE_ID")
@@ -96,11 +96,12 @@ def deploy_stage(source: str, target: str, note: str) -> dict:
     operation_url = response.headers.get("Location") or response.headers.get("Operation-Location")
     if not operation_url:
         payload = response.json() if response.text else {}
-        return {"status": "Succeeded", "response": payload}
+        return {"status": "Succeeded", "policy": policy, "response": payload}
 
     result = poll_operation(operation_url, headers)
     if result["status"] != "Succeeded":
         raise RuntimeError(f"Fabric deployment operation did not succeed: {result}")
+    result["policy"] = policy
     return result
 
 
@@ -108,24 +109,42 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Deploy between Fabric deployment pipeline stages.")
     parser.add_argument("--source", required=True, choices=["dev", "test"])
     parser.add_argument("--target", required=True, choices=["test", "prod"])
+    parser.add_argument(
+        "--policy",
+        required=True,
+        choices=["overwrite-test", "incremental-prod"],
+        help="Deployment policy recorded in release evidence. Prod policy never deletes target-only items.",
+    )
     parser.add_argument("--note", default="")
     args = parser.parse_args()
 
-    allowed_pairs = {("dev", "test"), ("test", "prod")}
-    if (args.source, args.target) not in allowed_pairs:
+    allowed_policies = {
+        ("dev", "test"): "overwrite-test",
+        ("test", "prod"): "incremental-prod",
+    }
+    expected_policy = allowed_policies.get((args.source, args.target))
+    if expected_policy is None:
         print("Only consecutive deployments are supported: dev->test or test->prod.", file=sys.stderr)
+        return 1
+    if args.policy != expected_policy:
+        print(
+            f"{args.source}->{args.target} requires policy {expected_policy}; got {args.policy}.",
+            file=sys.stderr,
+        )
         return 1
 
     note = args.note or (
-        f"Azure DevOps deployment {args.source}->{args.target}; "
+        f"Azure DevOps deployment {args.source}->{args.target}; policy={args.policy}; "
         f"build={os.getenv('BUILD_BUILDID')}; commit={os.getenv('BUILD_SOURCEVERSION')}"
     )
-    result = deploy_stage(args.source, args.target, note)
+    result = deploy_stage(args.source, args.target, note, args.policy)
 
     EVIDENCE_DIR.mkdir(exist_ok=True)
     evidence = {
         "sourceStage": args.source,
         "targetStage": args.target,
+        "policy": args.policy,
+        "deletionPolicy": "Target-only items are not deleted by this automation. Delete retired Prod items manually after separate approval.",
         "timestampUtc": datetime.now(timezone.utc).isoformat(),
         "buildId": os.getenv("BUILD_BUILDID"),
         "sourceBranch": os.getenv("BUILD_SOURCEBRANCH"),

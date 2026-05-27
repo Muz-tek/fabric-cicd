@@ -15,6 +15,15 @@
 4. Confirm the Fabric deployment pipeline has Dev, Test, and Prod workspaces assigned to the correct stages.
 5. If rollback is needed, revert or cherry-pick the Git commit, merge to the protected branch, and re-run the release pipeline.
 
+## Production Item Retirement
+
+1. Confirm the item is no longer required and identify downstream dependencies, schedules, reports, semantic models, and consumers.
+2. Remove the item from the Fabric workload repo and deploy through Dev and Test.
+3. Confirm Test validation passes without the retired item.
+4. Raise a production retirement change with approval, rollback notes, and evidence.
+5. Manually delete the target-only item from Prod after approval.
+6. Record the deletion in release evidence or the change ticket.
+
 ## Production Incident
 
 1. Capture incident start time, affected Fabric items, user impact, and last successful deployment.
