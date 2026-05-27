@@ -1,22 +1,32 @@
 trigger:
   branches:
     include:
-      - develop
+      - main
       - feature/*
       - bugfix/*
   paths:
     include:
-      - fabric/*
-      - notebooks/*
-      - pipelines/*
       - tests/*
       - terraform/*
       - azure-pipelines/*
+      - scripts/*
+
+resources:
+  repositories:
+    - repository: fabric_source
+      type: git
+      name: fabric-workloads
+      trigger:
+        branches:
+          include:
+            - main
+            - develop
+            - feature/*
+            - bugfix/*
 
 pr:
   branches:
     include:
-      - develop
       - main
 
 pool:
@@ -34,5 +44,5 @@ stages:
       - template: templates/fabric-validate.yml
       - template: templates/terraform-plan.yml
         parameters:
-          environmentName: dev
+          planName: platform
           serviceConnection: $(azureServiceConnection)

@@ -4,13 +4,10 @@ fabric_capacity_id              = "00000000-0000-0000-0000-000000000000"
 fabric_git_connection_id        = "00000000-0000-0000-0000-000000000000"
 azuredevops_org_service_url     = "https://dev.azure.com/your-org"
 azuredevops_project_name        = "your-project"
-azuredevops_repository_name     = "your-repo"
+azuredevops_iac_repository_name = "fabric-platform-iac"
+azuredevops_fabric_repository_name = "fabric-workloads"
 azure_service_connection_name   = "sc-azure-fabric-dataops"
 workspace_admin_principal_ids   = ["00000000-0000-0000-0000-000000000000"]
 workspace_contributor_principal_ids = ["00000000-0000-0000-0000-000000000000"]
-
-branch_by_environment = {
-  dev  = "develop"
-  test = "release/test"
-  prod = "main"
-}
+deployment_pipeline_admin_principal_ids = ["00000000-0000-0000-0000-000000000000"]
+dev_git_branch = "main"

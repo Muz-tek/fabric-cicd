@@ -2,13 +2,21 @@ trigger:
   branches:
     include:
       - main
-      - release/*
   paths:
     include:
-      - fabric/*
-      - notebooks/*
-      - pipelines/*
       - terraform/*
+      - azure-pipelines/*
+      - scripts/*
+
+resources:
+  repositories:
+    - repository: fabric_source
+      type: git
+      name: fabric-workloads
+      trigger:
+        branches:
+          include:
+            - main
 
 pool:
   vmImage: ubuntu-latest
@@ -19,62 +27,72 @@ variables:
     value: 1.8.5
 
 stages:
-  - stage: Plan_Test
-    displayName: Plan test environment
+  - stage: Plan_Platform
+    displayName: Plan Fabric platform
     jobs:
       - template: templates/terraform-plan.yml
         parameters:
-          environmentName: test
+          planName: platform
+          serviceConnection: $(azureServiceConnection)
+
+  - stage: Apply_Platform
+    displayName: Apply Fabric platform
+    dependsOn: Plan_Platform
+    condition: succeeded()
+    jobs:
+      - deployment: apply_platform
+        displayName: Terraform apply workspaces and deployment pipeline
+        environment: fabric-platform
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: templates/terraform-apply.yml
+                  parameters:
+                    planName: platform
+                    serviceConnection: $(azureServiceConnection)
+
+  - stage: Sync_Dev
+    displayName: Sync Dev workspace from Git
+    dependsOn: Apply_Platform
+    condition: succeeded()
+    jobs:
+      - template: templates/fabric-sync-dev.yml
+        parameters:
           serviceConnection: $(azureServiceConnection)
 
   - stage: Deploy_Test
-    displayName: Deploy test environment
-    dependsOn: Plan_Test
+    displayName: Deploy Dev to Test
+    dependsOn: Sync_Dev
     condition: succeeded()
     jobs:
       - deployment: deploy_test
-        displayName: Terraform apply and Fabric sync
+        displayName: Fabric deployment pipeline Dev to Test
         environment: fabric-test
         strategy:
           runOnce:
             deploy:
               steps:
-                - template: templates/terraform-apply.yml
-                  parameters:
-                    environmentName: test
-                    serviceConnection: $(azureServiceConnection)
                 - template: templates/fabric-promote.yml
                   parameters:
-                    environmentName: test
+                    sourceStage: dev
+                    targetStage: test
                     serviceConnection: $(azureServiceConnection)
 
-  - stage: Plan_Prod
-    displayName: Plan production environment
+  - stage: Deploy_Prod
+    displayName: Deploy Test to Prod
     dependsOn: Deploy_Test
     condition: succeeded()
     jobs:
-      - template: templates/terraform-plan.yml
-        parameters:
-          environmentName: prod
-          serviceConnection: $(azureServiceConnection)
-
-  - stage: Deploy_Prod
-    displayName: Deploy production environment
-    dependsOn: Plan_Prod
-    condition: succeeded()
-    jobs:
       - deployment: deploy_prod
-        displayName: Terraform apply and Fabric sync
+        displayName: Fabric deployment pipeline Test to Prod
         environment: fabric-prod
         strategy:
           runOnce:
             deploy:
               steps:
-                - template: templates/terraform-apply.yml
-                  parameters:
-                    environmentName: prod
-                    serviceConnection: $(azureServiceConnection)
                 - template: templates/fabric-promote.yml
                   parameters:
-                    environmentName: prod
+                    sourceStage: test
+                    targetStage: prod
                     serviceConnection: $(azureServiceConnection)

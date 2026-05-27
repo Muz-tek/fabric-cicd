@@ -11,8 +11,8 @@
 
 1. Confirm the target Azure DevOps environment approval was completed by an authorized approver.
 2. Check the release evidence artifact for commit, branch, and target environment.
-3. In Fabric, confirm the target workspace Git connection is `ConnectedAndInitialized`.
-4. If the workspace is out of sync, run the release pipeline again after confirming the branch mapping in `terraform/terraform.tfvars`.
+3. In Fabric, confirm the Dev workspace Git connection is `ConnectedAndInitialized`.
+4. Confirm the Fabric deployment pipeline has Dev, Test, and Prod workspaces assigned to the correct stages.
 5. If rollback is needed, revert or cherry-pick the Git commit, merge to the protected branch, and re-run the release pipeline.
 
 ## Production Incident

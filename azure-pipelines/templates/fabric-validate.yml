@@ -3,6 +3,9 @@ jobs:
     displayName: Validate Fabric artifacts
     steps:
       - checkout: self
+        path: iac
+      - checkout: fabric_source
+        path: fabric-source
 
       - task: UsePythonVersion@0
         displayName: Use Python
@@ -13,7 +16,7 @@ jobs:
           set -euo pipefail
           python -m pip install --upgrade pip
           pip install pytest nbformat jsonschema yamllint
-          yamllint azure-pipelines
-          pytest tests
-          python scripts/validate_fabric_items.py
+          yamllint "$(Pipeline.Workspace)/iac/azure-pipelines"
+          pytest "$(Pipeline.Workspace)/iac/tests"
+          FABRIC_SOURCE_ROOT="$(Pipeline.Workspace)/fabric-source" python "$(Pipeline.Workspace)/iac/scripts/validate_fabric_items.py"
         displayName: Run static checks and tests

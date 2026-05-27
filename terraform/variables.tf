@@ -13,6 +13,11 @@ variable "environment_names" {
   description = "Fabric environments to create and promote through."
   type        = list(string)
   default     = ["dev", "test", "prod"]
+
+  validation {
+    condition     = alltrue([for env in ["dev", "test", "prod"] : contains(var.environment_names, env)])
+    error_message = "environment_names must include dev, test, and prod."
+  }
 }
 
 variable "fabric_capacity_id" {
@@ -35,8 +40,13 @@ variable "azuredevops_project_name" {
   type        = string
 }
 
-variable "azuredevops_repository_name" {
-  description = "Azure Repos repository name containing the Fabric source."
+variable "azuredevops_iac_repository_name" {
+  description = "Azure Repos repository name containing Terraform, Azure Pipelines YAML, scripts, and runbooks."
+  type        = string
+}
+
+variable "azuredevops_fabric_repository_name" {
+  description = "Azure Repos repository name containing Fabric notebooks, pipelines, and item definitions."
   type        = string
 }
 
@@ -46,7 +56,7 @@ variable "azure_service_connection_name" {
 }
 
 variable "git_directory" {
-  description = "Repository folder synced to Fabric workspaces."
+  description = "Repository folder synced to the Fabric dev workspace."
   type        = string
   default     = "/fabric"
 
@@ -56,14 +66,10 @@ variable "git_directory" {
   }
 }
 
-variable "branch_by_environment" {
-  description = "Git branch mapped to each Fabric workspace."
-  type        = map(string)
-  default = {
-    dev  = "develop"
-    test = "release/test"
-    prod = "main"
-  }
+variable "dev_git_branch" {
+  description = "Azure DevOps Git branch connected to the Fabric dev workspace."
+  type        = string
+  default     = "main"
 }
 
 variable "workspace_admin_principal_ids" {
@@ -74,6 +80,12 @@ variable "workspace_admin_principal_ids" {
 
 variable "workspace_contributor_principal_ids" {
   description = "Extra Entra ID principal IDs granted Contributor in non-production Fabric workspaces."
+  type        = list(string)
+  default     = []
+}
+
+variable "deployment_pipeline_admin_principal_ids" {
+  description = "Extra Entra ID principal IDs granted Admin on the Fabric deployment pipeline."
   type        = list(string)
   default     = []
 }

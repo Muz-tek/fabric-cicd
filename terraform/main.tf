@@ -2,9 +2,14 @@ data "azuredevops_project" "this" {
   name = var.azuredevops_project_name
 }
 
-data "azuredevops_git_repository" "this" {
+data "azuredevops_git_repository" "iac" {
   project_id = data.azuredevops_project.this.id
-  name       = var.azuredevops_repository_name
+  name       = var.azuredevops_iac_repository_name
+}
+
+data "azuredevops_git_repository" "fabric" {
+  project_id = data.azuredevops_project.this.id
+  name       = var.azuredevops_fabric_repository_name
 }
 
 resource "random_string" "suffix" {
@@ -103,17 +108,16 @@ resource "fabric_workspace" "env" {
   capacity_id  = var.fabric_capacity_id
 }
 
-resource "fabric_workspace_git" "env" {
-  for_each                = local.environments
-  workspace_id            = fabric_workspace.env[each.key].id
+resource "fabric_workspace_git" "dev" {
+  workspace_id            = fabric_workspace.env["dev"].id
   initialization_strategy = "PreferRemote"
 
   git_provider_details = {
     git_provider_type = "AzureDevOps"
     organization_name = local.azdo_org_name
     project_name      = var.azuredevops_project_name
-    repository_name   = var.azuredevops_repository_name
-    branch_name       = lookup(var.branch_by_environment, each.key, each.key)
+    repository_name   = var.azuredevops_fabric_repository_name
+    branch_name       = var.dev_git_branch
     directory_name    = var.git_directory
   }
 
@@ -121,6 +125,32 @@ resource "fabric_workspace_git" "env" {
     source        = "ConfiguredConnection"
     connection_id = var.fabric_git_connection_id
   }
+}
+
+resource "fabric_deployment_pipeline" "release" {
+  display_name = "${var.project_name}-fabric-release"
+  description  = "Azure DevOps-controlled Fabric deployment pipeline for ${var.project_name}."
+
+  stages = [
+    {
+      display_name = "Dev"
+      description  = "Git-connected development stage."
+      is_public    = false
+      workspace_id = fabric_workspace.env["dev"].id
+    },
+    {
+      display_name = "Test"
+      description  = "Controlled test stage promoted from Dev."
+      is_public    = false
+      workspace_id = fabric_workspace.env["test"].id
+    },
+    {
+      display_name = "Prod"
+      description  = "Controlled production stage promoted from Test."
+      is_public    = false
+      workspace_id = fabric_workspace.env["prod"].id
+    }
+  ]
 }
 
 resource "fabric_lakehouse" "bronze" {
@@ -176,6 +206,17 @@ resource "fabric_workspace_role_assignment" "contributors" {
   role = "Contributor"
 }
 
+resource "fabric_deployment_pipeline_role_assignment" "admins" {
+  for_each = toset(var.deployment_pipeline_admin_principal_ids)
+
+  deployment_pipeline_id = fabric_deployment_pipeline.release.id
+  principal = {
+    id   = each.value
+    type = "Group"
+  }
+  role = "Admin"
+}
+
 resource "azuredevops_variable_group" "platform" {
   project_id   = data.azuredevops_project.this.id
   name         = "vg-fabric-dataops"
@@ -209,6 +250,26 @@ resource "azuredevops_variable_group" "platform" {
       value = variable.value.id
     }
   }
+
+  variable {
+    name  = "FABRIC_DEPLOYMENT_PIPELINE_ID"
+    value = fabric_deployment_pipeline.release.id
+  }
+
+  variable {
+    name  = "FABRIC_DEPLOYMENT_STAGE_ID_DEV"
+    value = fabric_deployment_pipeline.release.stages[0].id
+  }
+
+  variable {
+    name  = "FABRIC_DEPLOYMENT_STAGE_ID_TEST"
+    value = fabric_deployment_pipeline.release.stages[1].id
+  }
+
+  variable {
+    name  = "FABRIC_DEPLOYMENT_STAGE_ID_PROD"
+    value = fabric_deployment_pipeline.release.stages[2].id
+  }
 }
 
 resource "azuredevops_build_definition" "ci" {
@@ -218,8 +279,8 @@ resource "azuredevops_build_definition" "ci" {
 
   repository {
     repo_type   = "TfsGit"
-    repo_id     = data.azuredevops_git_repository.this.id
-    branch_name = "refs/heads/develop"
+    repo_id     = data.azuredevops_git_repository.iac.id
+    branch_name = "refs/heads/main"
     yml_path    = "azure-pipelines/ci.yml"
   }
 }
@@ -231,7 +292,7 @@ resource "azuredevops_build_definition" "release" {
 
   repository {
     repo_type   = "TfsGit"
-    repo_id     = data.azuredevops_git_repository.this.id
+    repo_id     = data.azuredevops_git_repository.iac.id
     branch_name = "refs/heads/main"
     yml_path    = "azure-pipelines/release.yml"
   }

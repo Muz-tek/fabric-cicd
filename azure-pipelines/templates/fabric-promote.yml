@@ -1,5 +1,6 @@
 parameters:
-  environmentName: ''
+  sourceStage: ''
+  targetStage: ''
   serviceConnection: ''
 
 steps:
@@ -11,7 +12,7 @@ steps:
       versionSpec: '3.11'
 
   - task: AzureCLI@2
-    displayName: Sync Fabric workspace from Git
+    displayName: Deploy Fabric ${{ parameters.sourceStage }} to ${{ parameters.targetStage }}
     inputs:
       azureSubscription: ${{ parameters.serviceConnection }}
       scriptType: bash
@@ -20,9 +21,11 @@ steps:
         set -euo pipefail
         python -m pip install --upgrade pip
         pip install requests
-        python scripts/sync_fabric_from_git.py --environment "${{ parameters.environmentName }}"
+        python scripts/deploy_fabric_stage.py \
+          --source "${{ parameters.sourceStage }}" \
+          --target "${{ parameters.targetStage }}"
 
   - publish: $(System.DefaultWorkingDirectory)/release-evidence
     displayName: Publish release evidence
-    artifact: release-evidence-${{ parameters.environmentName }}
+    artifact: release-evidence-${{ parameters.sourceStage }}-to-${{ parameters.targetStage }}
     condition: always()

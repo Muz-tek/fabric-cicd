@@ -1,9 +1,10 @@
 from pathlib import Path
 import json
+import os
 import sys
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(os.getenv("FABRIC_SOURCE_ROOT", Path(__file__).resolve().parents[1])).resolve()
 FABRIC_DIRS = [ROOT / "fabric", ROOT / "notebooks", ROOT / "pipelines"]
 
 

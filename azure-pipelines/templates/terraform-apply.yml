@@ -1,5 +1,5 @@
 parameters:
-  environmentName: ''
+  planName: ''
   serviceConnection: ''
 
 steps:
@@ -11,10 +11,10 @@ steps:
       terraformVersion: $(terraformVersion)
 
   - download: current
-    artifact: tfplan-${{ parameters.environmentName }}
+    artifact: tfplan-${{ parameters.planName }}
 
   - task: AzureCLI@2
-    displayName: Terraform apply ${{ parameters.environmentName }}
+    displayName: Terraform apply ${{ parameters.planName }}
     inputs:
       azureSubscription: ${{ parameters.serviceConnection }}
       scriptType: bash
@@ -23,4 +23,4 @@ steps:
       inlineScript: |
         set -euo pipefail
         terraform init
-        terraform apply -auto-approve "$(Pipeline.Workspace)/tfplan-${{ parameters.environmentName }}/tfplan-${{ parameters.environmentName }}"
+        terraform apply -auto-approve "$(Pipeline.Workspace)/tfplan-${{ parameters.planName }}/tfplan-${{ parameters.planName }}"

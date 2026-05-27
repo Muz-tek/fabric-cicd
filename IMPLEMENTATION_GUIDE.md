@@ -4,30 +4,37 @@
 
 This repository contains a starter implementation for modern DataOps/DevOps around Microsoft Fabric, designed to run exclusively in Azure DevOps.
 
-- Terraform-managed Fabric workspaces, Git connections, workspace roles, baseline Lakehouses, and Azure operational resources.
+The recommended operating model uses two Azure Repos repositories:
+
+- Fabric workload repo: notebooks, data pipelines, semantic models, reports, and Fabric item definitions.
+- Platform/IaC repo: Terraform, Azure Pipelines YAML, automation scripts, documentation, and runbooks.
+
+This scaffold provides:
+
+- Terraform-managed Fabric workspaces, Dev workspace Git integration, Fabric deployment pipeline stages, workspace roles, baseline Lakehouses, and Azure operational resources.
 - Azure Pipelines for CI validation, Terraform planning/apply, environment promotion, release evidence, and approvals.
 - Static validation for Fabric JSON artifacts and notebooks.
 - Operational runbooks for failed validation, failed promotion, production incidents, and access requests.
 
-The design follows Microsoft Fabric ALM guidance: use Azure DevOps Repos as the source of truth, automate workspace Git integration, and use Azure Pipelines for controlled promotion. Microsoft documents that Fabric Git integration APIs support CI/CD automation, including connecting workspaces to Git and syncing content. This scaffold is intentionally Azure DevOps-only.
+The design follows Microsoft Fabric ALM guidance: use the Fabric workload repo as the source of truth for Fabric items, connect Git only to the Dev workspace, and let Azure Pipelines in the platform/IaC repo control promotion from Dev to Test to Prod through Fabric deployment pipelines. This scaffold is intentionally Azure DevOps-only.
 
 ## Target Architecture
 
 ```mermaid
 flowchart LR
-  Dev["Developer branch"] --> PR["Pull request"]
+  Dev["Fabric workload feature branch"] --> PR["Pull request"]
   PR --> CI["CI pipeline: lint, tests, Terraform plan"]
-  CI --> Develop["develop branch"]
-  Develop --> DevWS["Fabric dev workspace"]
-  Develop --> Release["release/test branch"]
-  Release --> TestWS["Fabric test workspace"]
-  TestWS --> Approval["Manual approval"]
-  Approval --> Main["main branch"]
-  Main --> ProdWS["Fabric prod workspace"]
+  CI --> Main["Fabric workload main branch"]
+  Main --> DevWS["Fabric Dev workspace connected to Git"]
+  DevWS --> TestWS["Fabric Test workspace"]
+  TestWS --> Approval["Azure DevOps approval"]
+  Approval --> ProdWS["Fabric Prod workspace"]
   ProdWS --> Evidence["Release evidence and runbooks"]
 ```
 
 ## Repository Layout
+
+Platform/IaC repo:
 
 ```text
 azure-pipelines/
@@ -43,15 +50,28 @@ terraform/
 scripts/
   validate_fabric_items.py
   sync_fabric_from_git.py
+  deploy_fabric_stage.py
 tests/
 runbooks/
 IMPLEMENTATION_GUIDE.md
 ```
 
+Fabric workload repo:
+
+```text
+fabric/
+notebooks/
+pipelines/
+```
+
+The workload repo name defaults to `fabric-workloads` in the YAML repository resources. If you use another name, update `azure-pipelines/ci.yml` and `azure-pipelines/release.yml`.
+
 ## Prerequisites
 
 1. Microsoft Fabric tenant and capacity.
-2. Azure DevOps project and Azure Repos repository.
+2. Azure DevOps project with two Azure Repos repositories:
+   - platform/IaC repository for this scaffold
+   - Fabric workload repository for notebooks, pipelines, and item definitions
 3. Azure Resource Manager service connection in Azure DevOps, preferably using workload identity federation.
 4. Fabric configured connection for Azure DevOps Git integration.
 5. Service principal or user identity with permission to manage Fabric workspaces, Azure resources, and Azure DevOps pipeline definitions.
@@ -66,11 +86,13 @@ For local Terraform runs, authenticate the Azure DevOps provider with `AZDO_ORG_
 Use this default flow:
 
 - `feature/*` or `bugfix/*`: developer work.
-- `develop`: integration branch, mapped to the Fabric dev workspace.
-- `release/test`: controlled test branch, mapped to the Fabric test workspace.
-- `main`: production branch, mapped to the Fabric prod workspace.
+- Fabric workload repo `main`: approved integration branch and source of truth for Fabric content.
+- Platform/IaC repo `main`: source of truth for Terraform, release orchestration, and runbooks.
+- Fabric Dev workspace: connected to `main` through Fabric Git integration.
+- Fabric Test workspace: not connected to Git; promoted from Dev by Azure Pipelines.
+- Fabric Prod workspace: not connected to Git; promoted from Test by Azure Pipelines after approval.
 
-Protect `develop`, `release/test`, and `main` with branch policies:
+Protect `main` in both repositories with branch policies:
 
 - Require pull requests.
 - Require successful CI.
@@ -86,10 +108,12 @@ Protect `develop`, `release/test`, and `main` with branch policies:
    - `fabric_git_connection_id`
    - `azuredevops_org_service_url`
    - `azuredevops_project_name`
-   - `azuredevops_repository_name`
+   - `azuredevops_iac_repository_name`
+   - `azuredevops_fabric_repository_name`
    - `azure_service_connection_name`
    - workspace admin and contributor group object IDs
-3. Review `branch_by_environment` and `git_directory`.
+   - deployment pipeline admin group object IDs
+3. Review `dev_git_branch` and `git_directory`.
 4. Run:
 
 ```bash
@@ -114,30 +138,53 @@ After creation:
 
 1. Open each pipeline in Azure DevOps.
 2. Authorize the Azure Resource Manager service connection for the pipeline.
-3. Create Azure DevOps Environments named `fabric-test` and `fabric-prod`.
-4. Add approval checks to `fabric-prod`.
+3. Create Azure DevOps Environments named `fabric-platform`, `fabric-test`, and `fabric-prod`.
+4. Add approval checks to `fabric-prod`. Add checks to `fabric-test` as needed for UAT control.
 5. Confirm the `vg-fabric-dataops` variable group is authorized for each pipeline.
+6. If your Fabric workload repository is not named `fabric-workloads`, update the `resources.repositories.name` value in `azure-pipelines/ci.yml` and `azure-pipelines/release.yml`.
 
 ## CI/CD Behavior
 
 CI pipeline:
 
-- Runs on pull requests and feature/develop changes.
+- Runs on platform/IaC repo changes.
+- Also watches the Fabric workload repo for changes to `main`, `develop`, `feature/*`, and `bugfix/*`.
 - Checks Terraform formatting and validation.
 - Produces a Terraform plan.
-- Runs JSON, notebook, YAML, and pytest validation.
+- Runs JSON and notebook validation against the Fabric workload repo.
+- Runs YAML and pytest validation against the platform/IaC repo.
 
 Release pipeline:
 
-- Runs on `main` and `release/*`.
-- Plans and applies infrastructure.
-- Syncs the target Fabric workspace from Git.
+- Runs on platform/IaC repo `main` changes.
+- Also runs when the Fabric workload repo `main` changes.
+- Plans and applies platform infrastructure.
+- Syncs only the Dev Fabric workspace from Git.
+- Deploys Dev to Test through the Fabric deployment pipeline API.
+- Deploys Test to Prod through the Fabric deployment pipeline API after Azure DevOps approval.
 - Publishes release evidence for auditability.
 - Uses Azure DevOps environment approvals for production.
 
-## Fabric Sync Script
+## Fabric Deployment Automation
 
-`scripts/sync_fabric_from_git.py` calls the Fabric REST API `updateFromGit` operation and writes release evidence. Terraform adds `FABRIC_WORKSPACE_ID_DEV`, `FABRIC_WORKSPACE_ID_TEST`, and `FABRIC_WORKSPACE_ID_PROD` to the Azure DevOps variable group. The pipeline gets the Fabric access token through the Azure CLI service connection context. The service connection identity must have contributor or higher access to the target Fabric workspace and must be supported by every Fabric item type being promoted.
+`scripts/sync_fabric_from_git.py` calls the Fabric REST API `updateFromGit` operation for the Dev workspace and writes release evidence. Test and Prod are intentionally not Git-connected.
+
+`scripts/deploy_fabric_stage.py` calls the Fabric deployment pipeline `deploy` API for consecutive stage deployments:
+
+- Dev to Test
+- Test to Prod
+
+Terraform adds these values to the Azure DevOps variable group:
+
+- `FABRIC_WORKSPACE_ID_DEV`
+- `FABRIC_WORKSPACE_ID_TEST`
+- `FABRIC_WORKSPACE_ID_PROD`
+- `FABRIC_DEPLOYMENT_PIPELINE_ID`
+- `FABRIC_DEPLOYMENT_STAGE_ID_DEV`
+- `FABRIC_DEPLOYMENT_STAGE_ID_TEST`
+- `FABRIC_DEPLOYMENT_STAGE_ID_PROD`
+
+The pipeline gets the Fabric access token through the Azure CLI service connection context. The service connection identity must be a deployment pipeline admin and at least a contributor on source and target workspaces. Service principal deployment is supported only when the involved Fabric item types support service principals.
 
 ## Testing Strategy
 
@@ -158,7 +205,8 @@ Each release should capture:
 - Source branch and commit SHA.
 - Terraform plan artifact.
 - Approval record.
-- Fabric sync evidence.
+- Dev sync evidence.
+- Fabric deployment evidence.
 - Smoke test results.
 - Rollback decision and owner.
 
@@ -170,7 +218,7 @@ Use semantic release labels for data products where useful, for example `sales-m
 - Keep production access read-only except for release identities and break-glass admins.
 - Store secrets in Key Vault, not pipeline YAML.
 - Use workload identity federation where available.
-- Keep Fabric workspace Git connections configured centrally.
+- Keep only the Dev workspace Git-connected unless you deliberately choose a branch-per-environment model.
 - Require manual approval for production.
 - Keep release evidence for audit and incident response.
 
@@ -189,7 +237,9 @@ Use `runbooks/fabric-operations.md` as the initial operations handbook. Add work
 
 - [CI/CD workflow options in Fabric](https://learn.microsoft.com/en-us/fabric/cicd/manage-deployment)
 - [Automate Git integration by using APIs](https://learn.microsoft.com/en-us/fabric/cicd/git-integration/git-automation)
+- [Automate deployment pipelines by using Fabric APIs](https://learn.microsoft.com/en-us/fabric/cicd/deployment-pipelines/pipeline-automation-fabric)
 - [CI/CD for pipelines in Data Factory](https://learn.microsoft.com/en-us/fabric/data-factory/cicd-pipelines)
 - [Azure Pipelines service connections](https://learn.microsoft.com/en-us/azure/devops/pipelines/library/service-endpoints)
 - [Microsoft Fabric Terraform provider workspace resource](https://registry.terraform.io/providers/microsoft/fabric/latest/docs/resources/workspace)
 - [Microsoft Fabric Terraform provider workspace Git resource](https://registry.terraform.io/providers/microsoft/fabric/latest/docs/resources/workspace_git)
+- [Microsoft Fabric Terraform provider deployment pipeline resource](https://registry.terraform.io/providers/microsoft/fabric/latest/docs/resources/deployment_pipeline)

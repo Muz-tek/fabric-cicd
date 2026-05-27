@@ -3,9 +3,23 @@ output "fabric_workspace_ids" {
   value       = { for env, workspace in fabric_workspace.env : env => workspace.id }
 }
 
-output "fabric_workspace_git_states" {
-  description = "Git connection state by environment."
-  value       = { for env, git in fabric_workspace_git.env : env => git.git_connection_state }
+output "fabric_dev_workspace_git_state" {
+  description = "Git connection state for the Fabric dev workspace."
+  value       = fabric_workspace_git.dev.git_connection_state
+}
+
+output "fabric_deployment_pipeline_id" {
+  description = "Fabric deployment pipeline ID used for Dev to Test to Prod promotion."
+  value       = fabric_deployment_pipeline.release.id
+}
+
+output "fabric_deployment_pipeline_stage_ids" {
+  description = "Fabric deployment pipeline stage IDs by environment."
+  value = {
+    dev  = fabric_deployment_pipeline.release.stages[0].id
+    test = fabric_deployment_pipeline.release.stages[1].id
+    prod = fabric_deployment_pipeline.release.stages[2].id
+  }
 }
 
 output "release_storage_account_name" {

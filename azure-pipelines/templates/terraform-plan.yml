@@ -1,10 +1,10 @@
 parameters:
-  environmentName: ''
+  planName: ''
   serviceConnection: ''
 
 jobs:
-  - job: terraform_plan_${{ parameters.environmentName }}
-    displayName: Terraform plan ${{ parameters.environmentName }}
+  - job: terraform_plan_${{ parameters.planName }}
+    displayName: Terraform plan ${{ parameters.planName }}
     steps:
       - checkout: self
 
@@ -27,8 +27,8 @@ jobs:
             terraform validate
             terraform plan \
               -var-file="terraform.tfvars" \
-              -out="$(Pipeline.Workspace)/tfplan-${{ parameters.environmentName }}"
+              -out="$(Pipeline.Workspace)/tfplan-${{ parameters.planName }}"
 
-      - publish: $(Pipeline.Workspace)/tfplan-${{ parameters.environmentName }}
+      - publish: $(Pipeline.Workspace)/tfplan-${{ parameters.planName }}
         displayName: Publish Terraform plan
-        artifact: tfplan-${{ parameters.environmentName }}
+        artifact: tfplan-${{ parameters.planName }}

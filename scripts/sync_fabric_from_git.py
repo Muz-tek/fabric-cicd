@@ -131,11 +131,11 @@ def update_from_git(workspace_id: str) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Record Fabric Git sync release evidence.")
-    parser.add_argument("--environment", required=True, choices=["dev", "test", "prod"])
+    parser = argparse.ArgumentParser(description="Sync the Git-connected Fabric dev workspace.")
+    parser.add_argument("--environment", default="dev", choices=["dev"])
     args = parser.parse_args()
 
-    env_key = f"FABRIC_WORKSPACE_ID_{args.environment.upper()}"
+    env_key = "FABRIC_WORKSPACE_ID_DEV"
     workspace_id = os.getenv(env_key)
     source_version = os.getenv("BUILD_SOURCEVERSION")
 
@@ -147,7 +147,7 @@ def main() -> int:
 
     EVIDENCE_DIR.mkdir(exist_ok=True)
     evidence = {
-        "environment": args.environment,
+        "environment": "dev",
         "workspaceId": workspace_id,
         "timestampUtc": datetime.now(timezone.utc).isoformat(),
         "buildId": os.getenv("BUILD_BUILDID"),
@@ -155,7 +155,7 @@ def main() -> int:
         "sourceVersion": source_version,
         "fabricUpdateFromGit": result,
     }
-    output = EVIDENCE_DIR / f"fabric-sync-{args.environment}.json"
+    output = EVIDENCE_DIR / "fabric-sync-dev.json"
     output.write_text(json.dumps(evidence, indent=2), encoding="utf-8")
     print(f"Wrote release evidence to {output}")
     return 0
