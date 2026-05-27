@@ -2,14 +2,14 @@
 
 ## What This Scaffold Provides
 
-This repository contains a starter implementation for modern DataOps/DevOps around Microsoft Fabric:
+This repository contains a starter implementation for modern DataOps/DevOps around Microsoft Fabric, designed to run exclusively in Azure DevOps.
 
 - Terraform-managed Fabric workspaces, Git connections, workspace roles, baseline Lakehouses, and Azure operational resources.
 - Azure Pipelines for CI validation, Terraform planning/apply, environment promotion, release evidence, and approvals.
 - Static validation for Fabric JSON artifacts and notebooks.
 - Operational runbooks for failed validation, failed promotion, production incidents, and access requests.
 
-The design follows Microsoft Fabric ALM guidance: use Git as the source of truth, automate workspace Git integration, and use release pipelines or scripts for controlled promotion. Microsoft documents that Fabric Git integration APIs support CI/CD automation, including connecting workspaces to Git and syncing content. Fabric Data Factory pipeline CI/CD currently supports Azure DevOps and GitHub, with Azure DevOps recommended in Microsoft guidance.
+The design follows Microsoft Fabric ALM guidance: use Azure DevOps Repos as the source of truth, automate workspace Git integration, and use Azure Pipelines for controlled promotion. Microsoft documents that Fabric Git integration APIs support CI/CD automation, including connecting workspaces to Git and syncing content. This scaffold is intentionally Azure DevOps-only.
 
 ## Target Architecture
 
