@@ -7,6 +7,9 @@ It owns:
 - Fabric notebooks.
 - Fabric data pipelines.
 - Fabric item definitions.
+- Fabric Spark Environments.
+- Lakehouse and Warehouse definitions.
+- Dataflows and event streams where supported by Fabric lifecycle management.
 - Semantic models and reports.
 - Deployment-rule documentation for environment-specific bindings.
 - The `fabric-cicd` Azure Pipeline.
@@ -18,3 +21,12 @@ Deployment policy:
 - Dev always syncs from `main`.
 - Test is overwritten/updated from Dev for validation.
 - Prod is incremental: existing paired items are updated, new approved items are created, and retired Prod-only items are manually deleted through a separate approved change.
+
+Fabric-specific folders:
+
+- `environments/`: Spark runtime, public/custom libraries, and compute settings exported by Fabric Git integration.
+- `notebooks/`: notebooks and notebook helper assets.
+- `pipelines/`: Fabric data pipelines.
+- `lakehouses/` and `warehouses/`: definitions and metadata only; data is not promoted through Git.
+- `semantic-models/` and `reports/`: BI assets and project files.
+- `deployment-rules/`: environment-specific rules, bindings, parameters, and release notes.

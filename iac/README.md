@@ -9,3 +9,12 @@ It owns:
 - Platform runbooks and implementation documentation.
 
 It does not deploy notebooks, Fabric data pipelines, reports, or semantic models. Those live in the Fabric workload repo.
+
+Access is managed with Entra ID groups through Terraform where supported:
+
+- Workspace Admins across Dev/Test/Prod.
+- Contributors in Dev/Test.
+- Viewers in Prod.
+- Deployment pipeline Admins.
+
+Tenant, capacity, OneLake security, sensitivity labels, domains, and sharing/export policies are governed through Fabric admin processes and documented in `policies/fabric-access-and-governance.md`.

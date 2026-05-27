@@ -84,6 +84,12 @@ variable "workspace_contributor_principal_ids" {
   default     = []
 }
 
+variable "prod_viewer_principal_ids" {
+  description = "Extra Entra ID principal IDs granted Viewer in the production Fabric workspace."
+  type        = list(string)
+  default     = []
+}
+
 variable "deployment_pipeline_admin_principal_ids" {
   description = "Extra Entra ID principal IDs granted Admin on the Fabric deployment pipeline."
   type        = list(string)

@@ -206,6 +206,17 @@ resource "fabric_workspace_role_assignment" "contributors" {
   role = "Contributor"
 }
 
+resource "fabric_workspace_role_assignment" "prod_viewers" {
+  for_each = toset(var.prod_viewer_principal_ids)
+
+  workspace_id = fabric_workspace.env["prod"].id
+  principal = {
+    id   = each.value
+    type = "Group"
+  }
+  role = "Viewer"
+}
+
 resource "fabric_deployment_pipeline_role_assignment" "admins" {
   for_each = toset(var.deployment_pipeline_admin_principal_ids)
 

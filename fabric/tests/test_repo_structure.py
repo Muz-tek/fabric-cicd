@@ -7,8 +7,12 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_required_fabric_folders_exist():
     required = [
         "azure-pipelines",
+        "dataflows",
         "deployment-rules",
+        "environments",
+        "eventstreams",
         "items",
+        "lakehouses",
         "notebooks",
         "pipelines",
         "reports",

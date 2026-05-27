@@ -6,12 +6,17 @@ import sys
 
 ROOT = Path(os.getenv("FABRIC_SOURCE_ROOT", Path(__file__).resolve().parents[1])).resolve()
 FABRIC_DIRS = [
+    ROOT / "dataflows",
     ROOT / "deployment-rules",
+    ROOT / "environments",
+    ROOT / "eventstreams",
     ROOT / "items",
+    ROOT / "lakehouses",
     ROOT / "notebooks",
     ROOT / "pipelines",
     ROOT / "reports",
     ROOT / "semantic-models",
+    ROOT / "warehouses",
 ]
 
 

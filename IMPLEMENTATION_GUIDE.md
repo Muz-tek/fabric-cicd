@@ -19,7 +19,7 @@ This scaffold provides:
 - Terraform-managed Fabric workspaces, Dev workspace Git integration, Fabric deployment pipeline stages, workspace roles, baseline Lakehouses, Azure DevOps pipeline definitions, and Azure operational resources.
 - One Azure Pipeline for platform/IaC changes.
 - One Azure Pipeline for Fabric workload validation and Dev to Test to Prod promotion.
-- Static validation for Fabric JSON artifacts and notebooks.
+- Static validation for Fabric JSON artifacts, notebooks, and Spark Environment definitions.
 - Operational runbooks for failed validation, failed promotion, production incidents, and access requests.
 
 The design follows Microsoft Fabric ALM guidance: use the Fabric workload repo as the source of truth for Fabric items, connect Git only to the Dev workspace, and let the Fabric workload Azure Pipeline control promotion from Dev to Test to Prod through Fabric deployment pipelines. This scaffold is intentionally Azure DevOps-only.
@@ -76,7 +76,11 @@ azure-pipelines/
   fabric-cicd.yml
   templates/
 deployment-rules/
+dataflows/
+environments/
+eventstreams/
 items/
+lakehouses/
 notebooks/
 pipelines/
 reports/
@@ -134,6 +138,7 @@ Protect `main` in both repositories with branch policies:
    - `azuredevops_fabric_repository_name`
    - `azure_service_connection_name`
    - workspace admin and contributor group object IDs
+   - production viewer group object IDs
    - deployment pipeline admin group object IDs
 3. Review `dev_git_branch` and `git_directory`.
 4. Run:
@@ -224,11 +229,24 @@ Fabric item support differs by item type. Do not assume every workspace item can
 Use these folders in the Fabric workload repo:
 
 - `notebooks/`: notebooks and reusable notebook logic. Prefer parameters for environment-specific values.
+- `environments/`: Spark Environment item definitions, including public libraries, custom libraries, Spark runtime, and Spark compute settings supported by Fabric Git integration.
 - `pipelines/`: Fabric data pipelines. External connections and item references should be parameterized where possible.
+- `lakehouses/`: Lakehouse definitions and metadata. Lakehouse data is not moved by Git or deployment pipeline promotion.
+- `warehouses/`: Warehouse definitions and metadata. Validate deployment-pipeline support and limitations for your schema/data-change pattern.
+- `dataflows/`: Dataflow definitions where supported. OAuth connectors may require manual reauthentication after deployment.
+- `eventstreams/`: Eventstream definitions where supported. Validate source/sink bindings per environment.
 - `items/`: generic Fabric item definitions exported from Git integration or REST APIs.
 - `semantic-models/`: semantic model project files and model deployment assets.
 - `reports/`: report project files.
 - `deployment-rules/`: documented Dev/Test/Prod overrides such as lakehouse bindings, data source rules, notebook parameters, semantic model parameters, connection references, and refresh behavior.
+
+Spark Environments need special handling:
+
+- Git tracks supported Environment library and Spark compute settings.
+- Git sync updates the Environment staging state. Publish the Environment before relying on it for live notebook execution.
+- Fabric deployment pipelines can promote Environment items, but the feature is currently preview.
+- Custom pools are not fully supported in deployment pipelines. If a custom pool is selected, target Environment compute settings can fall back to defaults and continue showing differences after deployment.
+- Pin library versions where possible and keep custom library files in source control.
 
 For Lakehouses, Microsoft documents that data is preserved during Git operations and that deployment pipelines can be used for environment segmentation. Treat Lakehouse data separately from Lakehouse definitions. Do not rely on Git or deployment pipelines to move production data.
 
@@ -287,6 +305,39 @@ Use semantic release labels for data products where useful, for example `sales-m
 - Do not delete Prod items automatically as part of deployment. Retire Prod items manually with explicit approval and evidence.
 - Require manual approval for production.
 - Keep release evidence for audit and incident response.
+
+## Access Management
+
+Access should be group-based and environment-specific:
+
+- Platform admins: Admin on all Fabric workspaces and Admin on the Fabric deployment pipeline.
+- Data engineers: Contributor in Dev and Test only.
+- Prod consumers: Viewer in Prod only.
+- Release identity: deployment pipeline Admin and Contributor or higher on source and target workspaces.
+- Break-glass admins: emergency Admin access, time-limited and reviewed after use.
+
+Terraform manages the workspace role assignments and deployment pipeline Admin assignment where supported. The key variables are:
+
+- `workspace_admin_principal_ids`
+- `workspace_contributor_principal_ids`
+- `prod_viewer_principal_ids`
+- `deployment_pipeline_admin_principal_ids`
+
+Do not use direct user assignments as the normal operating model. Add and remove users from Entra ID groups instead.
+
+Data access is separate from workspace access. Use OneLake security roles, Warehouse/Lakehouse permissions, and semantic model permissions to control who can read data. A user can have workspace Viewer access but still need explicit data permissions depending on the item and OneLake security model.
+
+## Policy Management
+
+Fabric policies span several control planes:
+
+- Tenant settings: Git integration, service principal access, external sharing, export controls, and preview feature enablement.
+- Capacity settings: delegated tenant settings, disaster recovery, capacity-level governance, and workload behavior.
+- Workspace settings: domain assignment, sensitivity labels, endorsement/certification, contact/ownership, and item governance.
+- Data policies: OneLake security roles, shortcut governance, Lakehouse/Warehouse permissions, semantic model RLS/OLS, and connection permissions.
+- Release policies: branch protection, Azure DevOps approvals, release evidence, deployment-rule review, and production retirement changes.
+
+Not every Fabric policy currently has a stable Terraform resource. Where automation is not available, maintain the policy in `iac/policies/fabric-access-and-governance.md`, assign an owner, and validate it during platform readiness reviews.
 
 ## Operational Runbooks
 

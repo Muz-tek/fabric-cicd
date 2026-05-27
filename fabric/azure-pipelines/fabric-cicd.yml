@@ -13,6 +13,11 @@ trigger:
       - notebooks/**
       - pipelines/**
       - items/**
+      - environments/**
+      - lakehouses/**
+      - warehouses/**
+      - dataflows/**
+      - eventstreams/**
       - semantic-models/**
       - reports/**
       - deployment-rules/**
