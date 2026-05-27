@@ -30,3 +30,11 @@ Fabric-specific folders:
 - `lakehouses/` and `warehouses/`: definitions and metadata only; data is not promoted through Git.
 - `semantic-models/` and `reports/`: BI assets and project files.
 - `deployment-rules/`: environment-specific rules, bindings, parameters, and release notes.
+
+Lakehouse architecture:
+
+- Bronze: raw or lightly conformed source data.
+- Silver: validated and standardized integration data.
+- Gold: curated business-ready data products and approved feature tables.
+
+See [lakehouses/MEDALLION.md](lakehouses/MEDALLION.md).

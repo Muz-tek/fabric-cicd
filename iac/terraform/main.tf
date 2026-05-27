@@ -164,6 +164,28 @@ resource "fabric_lakehouse" "bronze" {
   }
 }
 
+resource "fabric_lakehouse" "silver" {
+  for_each     = var.create_sample_lakehouse ? local.environments : toset([])
+  workspace_id = fabric_workspace.env[each.key].id
+  display_name = "lh_${replace(var.project_name, "-", "_")}_${each.key}_silver"
+  description  = "Baseline validated/silver Lakehouse managed by Terraform."
+
+  configuration = {
+    enable_schemas = true
+  }
+}
+
+resource "fabric_lakehouse" "gold" {
+  for_each     = var.create_sample_lakehouse ? local.environments : toset([])
+  workspace_id = fabric_workspace.env[each.key].id
+  display_name = "lh_${replace(var.project_name, "-", "_")}_${each.key}_gold"
+  description  = "Baseline curated/gold Lakehouse managed by Terraform."
+
+  configuration = {
+    enable_schemas = true
+  }
+}
+
 resource "fabric_workspace_role_assignment" "admins" {
   for_each = {
     for item in flatten([
@@ -190,6 +212,27 @@ resource "fabric_workspace_role_assignment" "contributors" {
     for item in flatten([
       for env in local.non_prod_envs : [
         for principal_id in var.workspace_contributor_principal_ids : {
+          key          = "${env}-${principal_id}"
+          env          = env
+          principal_id = principal_id
+        }
+      ]
+    ]) : item.key => item
+  }
+
+  workspace_id = fabric_workspace.env[each.value.env].id
+  principal = {
+    id   = each.value.principal_id
+    type = "Group"
+  }
+  role = "Contributor"
+}
+
+resource "fabric_workspace_role_assignment" "data_scientists" {
+  for_each = {
+    for item in flatten([
+      for env in local.non_prod_envs : [
+        for principal_id in var.data_scientist_principal_ids : {
           key          = "${env}-${principal_id}"
           env          = env
           principal_id = principal_id

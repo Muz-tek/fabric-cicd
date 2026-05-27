@@ -13,7 +13,7 @@ It does not deploy notebooks, Fabric data pipelines, reports, or semantic models
 Access is managed with Entra ID groups through Terraform where supported:
 
 - Workspace Admins across Dev/Test/Prod.
-- Contributors in Dev/Test.
+- Data engineers and data scientists as Contributors in Dev/Test.
 - Viewers in Prod.
 - Deployment pipeline Admins.
 

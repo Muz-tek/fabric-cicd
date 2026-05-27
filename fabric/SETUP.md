@@ -50,3 +50,4 @@ Prod deployments do not delete target-only items. Retire Prod items manually thr
 4. Authorize `vg-fabric-dataops` and the Azure service connection for the pipeline.
 5. Add approval checks to the `fabric-prod` Azure DevOps Environment.
 6. Validate service principal support for every Fabric item type included in the workload.
+7. Confirm Bronze/Silver/Gold ownership, access, quality gates, and consumer-impact rules are documented in `lakehouses/MEDALLION.md`.

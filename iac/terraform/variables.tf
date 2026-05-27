@@ -84,6 +84,12 @@ variable "workspace_contributor_principal_ids" {
   default     = []
 }
 
+variable "data_scientist_principal_ids" {
+  description = "Extra Entra ID principal IDs for data scientists granted Contributor in non-production Fabric workspaces."
+  type        = list(string)
+  default     = []
+}
+
 variable "prod_viewer_principal_ids" {
   description = "Extra Entra ID principal IDs granted Viewer in the production Fabric workspace."
   type        = list(string)
@@ -97,7 +103,7 @@ variable "deployment_pipeline_admin_principal_ids" {
 }
 
 variable "create_sample_lakehouse" {
-  description = "Create a baseline Lakehouse in each Fabric workspace."
+  description = "Create baseline medallion Lakehouses in each Fabric workspace."
   type        = bool
   default     = true
 }

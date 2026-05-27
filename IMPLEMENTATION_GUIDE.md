@@ -6,7 +6,7 @@ This repository contains a starter implementation for modern DataOps/DevOps arou
 
 The recommended operating model uses two independent Azure Repos repositories:
 
-- Fabric workload repo: notebooks, data pipelines, semantic models, reports, and Fabric item definitions.
+- Fabric workload repo: notebooks, data pipelines, Lakehouse medallion assets, semantic models, reports, and Fabric item definitions.
 - Platform/IaC repo: Terraform, Azure Pipelines YAML, automation scripts, documentation, and runbooks.
 
 The top-level folders in this reference repo map directly to those repositories:
@@ -16,7 +16,7 @@ The top-level folders in this reference repo map directly to those repositories:
 
 This scaffold provides:
 
-- Terraform-managed Fabric workspaces, Dev workspace Git integration, Fabric deployment pipeline stages, workspace roles, baseline Lakehouses, Azure DevOps pipeline definitions, and Azure operational resources.
+- Terraform-managed Fabric workspaces, Dev workspace Git integration, Fabric deployment pipeline stages, workspace roles, baseline Bronze/Silver/Gold Lakehouses, Azure DevOps pipeline definitions, and Azure operational resources.
 - One Azure Pipeline for platform/IaC changes.
 - One Azure Pipeline for Fabric workload validation and Dev to Test to Prod promotion.
 - Static validation for Fabric JSON artifacts, notebooks, and Spark Environment definitions.
@@ -102,7 +102,7 @@ Each repo template has its own setup guide:
 1. Microsoft Fabric tenant and capacity.
 2. Azure DevOps project with two Azure Repos repositories:
    - platform/IaC repository for this scaffold
-   - Fabric workload repository for notebooks, pipelines, and item definitions
+   - Fabric workload repository for notebooks, pipelines, Lakehouse assets, and item definitions
 3. Azure Resource Manager service connection in Azure DevOps, preferably using workload identity federation.
 4. Fabric configured connection for Azure DevOps Git integration.
 5. Service principal or user identity with permission to manage Fabric workspaces, Azure resources, and Azure DevOps pipeline definitions.
@@ -146,6 +146,7 @@ Protect `main` in both repositories with branch policies:
    - `azuredevops_fabric_repository_name`
    - `azure_service_connection_name`
    - workspace admin and contributor group object IDs
+   - data scientist group object IDs
    - production viewer group object IDs
    - deployment pipeline admin group object IDs
 3. Review `dev_git_branch` and `git_directory`.
@@ -266,6 +267,14 @@ Spark Environments need special handling:
 
 For Lakehouses, Microsoft documents that data is preserved during Git operations and that deployment pipelines can be used for environment segmentation. Treat Lakehouse data separately from Lakehouse definitions. Do not rely on Git or deployment pipelines to move production data.
 
+This scaffold assumes a medallion Lakehouse model:
+
+- Bronze: raw or lightly conformed data, restricted in Prod.
+- Silver: validated and standardized data, used by engineering and data science.
+- Gold: curated business-ready data products, semantic model inputs, and approved feature tables.
+
+Terraform can create baseline Bronze, Silver, and Gold Lakehouses in each workspace when `create_sample_lakehouse = true`. Data movement and table creation are still workload responsibilities handled by Fabric notebooks, Spark jobs, and Fabric pipelines.
+
 For notebooks and data pipelines, validate these before release:
 
 - References to Lakehouses, Warehouses, and other workspace items.
@@ -328,6 +337,7 @@ Access should be group-based and environment-specific:
 
 - Platform admins: Admin on all Fabric workspaces and Admin on the Fabric deployment pipeline.
 - Data engineers: Contributor in Dev and Test only.
+- Data scientists: Contributor in Dev and Test only; Prod access is normally Viewer plus explicit data permissions to approved Gold/feature datasets.
 - Prod consumers: Viewer in Prod only.
 - Release identity: deployment pipeline Admin and Contributor or higher on source and target workspaces.
 - Break-glass admins: emergency Admin access, time-limited and reviewed after use.
@@ -336,12 +346,21 @@ Terraform manages the workspace role assignments and deployment pipeline Admin a
 
 - `workspace_admin_principal_ids`
 - `workspace_contributor_principal_ids`
+- `data_scientist_principal_ids`
 - `prod_viewer_principal_ids`
 - `deployment_pipeline_admin_principal_ids`
 
 Do not use direct user assignments as the normal operating model. Add and remove users from Entra ID groups instead.
 
 Data access is separate from workspace access. Use OneLake security roles, Warehouse/Lakehouse permissions, and semantic model permissions to control who can read data. A user can have workspace Viewer access but still need explicit data permissions depending on the item and OneLake security model.
+
+For medallion governance:
+
+- Restrict Prod Bronze access to platform and data engineering support roles.
+- Use Silver as the default integration layer for reusable engineering and feature work.
+- Use Gold for business consumption, semantic models, and approved ML feature tables.
+- Require data quality checks before Silver and Gold changes reach Prod.
+- Require consumer communication for breaking Gold schema changes.
 
 ## Policy Management
 

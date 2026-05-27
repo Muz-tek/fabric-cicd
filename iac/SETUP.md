@@ -14,6 +14,7 @@ Copy the contents of this `iac/` folder into the Azure DevOps platform/IaC repos
 - Entra ID group object IDs for:
   - workspace admins
   - Dev/Test contributors
+  - data scientists
   - Prod viewers
   - deployment pipeline admins
 
